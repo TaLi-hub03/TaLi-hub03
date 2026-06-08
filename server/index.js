@@ -4,10 +4,22 @@ const multer = require('multer');
 const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
+const pdf = require('pdf-parse');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Initialize Gemini
+const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+let model = null;
+if (apiKey) {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+} else {
+    console.warn('WARNING: GOOGLE_API_KEY is not set. AI processing will be disabled.');
+}
 
 app.use(cors());
 app.use(express.json());
@@ -47,6 +59,48 @@ const runQuery = (query) => {
     });
 };
 
+const processFile = async (filePath, fileType) => {
+    let text = '';
+    if (fileType === 'application/pdf') {
+        const dataBuffer = fs.readFileSync(filePath);
+        const data = await pdf(dataBuffer);
+        text = data.text;
+    } else {
+        text = fs.readFileSync(filePath, 'utf8');
+    }
+
+    if (!model) {
+        return { 
+            summary: 'AI Processing disabled: No API key provided.', 
+            keyConcepts: 'AI Processing disabled: No API key provided.', 
+            studyGuide: 'AI Processing disabled: No API key provided.', 
+            content: text 
+        };
+    }
+
+    const prompt = `
+        Analyze the following academic material and provide:
+        1. A concise summary.
+        2. A list of key concepts.
+        3. A structured study guide.
+
+        Material:
+        ${text.substring(0, 30000)} // Limit text length for safety
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const aiText = response.text();
+
+    // Simple parsing (could be improved with JSON mode)
+    const sections = aiText.split('\n\n');
+    const summary = sections.find(s => s.toLowerCase().includes('summary')) || 'Summary not found';
+    const keyConcepts = sections.find(s => s.toLowerCase().includes('key concepts')) || 'Key concepts not found';
+    const studyGuide = aiText; // Use full text as study guide for now
+
+    return { summary, key_concepts: keyConcepts, study_guide: studyGuide, content: text };
+};
+
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok' });
 });
@@ -56,11 +110,31 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         return res.status(400).json({ error: 'No file uploaded' });
     }
 
+    const { filename, mimetype, path: filePath } = req.file;
+
     try {
-        const { filename, mimetype } = req.file;
-        const query = `INSERT INTO study_materials (filename, file_type, status) VALUES ('${filename}', '${mimetype}', 'pending')`;
-        await runQuery(query);
-        res.json({ message: 'File uploaded successfully', filename });
+        // Initial DB entry
+        const insertQuery = `INSERT INTO study_materials (filename, file_type, status) VALUES ('${filename}', '${mimetype}', 'processing')`;
+        const result = await runQuery(insertQuery);
+        // team-db doesn't return the lastID easily in the JSON output we see, so we might need a workaround or just query by filename
+        
+        // Start background processing
+        processFile(filePath, mimetype).then(async (aiData) => {
+            const updateQuery = `UPDATE study_materials SET 
+                status = 'completed', 
+                content = '${aiData.content.replace(/'/g, "''")}', 
+                summary = '${aiData.summary.replace(/'/g, "''")}', 
+                key_concepts = '${aiData.key_concepts.replace(/'/g, "''")}', 
+                study_guide = '${aiData.study_guide.replace(/'/g, "''")}' 
+                WHERE filename = '${filename}'`;
+            await runQuery(updateQuery);
+        }).catch(async (error) => {
+            console.error('Processing error:', error);
+            const errorQuery = `UPDATE study_materials SET status = 'error' WHERE filename = '${filename}'`;
+            await runQuery(errorQuery);
+        });
+
+        res.json({ message: 'File uploaded and processing started', filename });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to save to database' });

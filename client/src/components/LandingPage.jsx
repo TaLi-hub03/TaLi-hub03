@@ -11,7 +11,7 @@ const FeatureCard = ({ icon: Icon, title, description }) => (
   </div>
 );
 
-const PricingCard = ({ plan, price, features, recommended }) => (
+const PricingCard = ({ plan, price, features, recommended, onSelect }) => (
   <div className={`p-8 rounded-3xl border ${recommended ? 'border-indigo-600 shadow-xl' : 'border-gray-200 shadow-sm'} bg-white relative`}>
     {recommended && (
       <span className="absolute top-0 right-0 bg-indigo-600 text-white text-xs font-bold px-4 py-1 rounded-bl-xl rounded-tr-3xl uppercase tracking-wider">
@@ -31,13 +31,16 @@ const PricingCard = ({ plan, price, features, recommended }) => (
         </li>
       ))}
     </ul>
-    <button className={`w-full py-4 rounded-xl font-bold transition ${recommended ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>
+    <button 
+      onClick={onSelect}
+      className={`w-full py-4 rounded-xl font-bold transition ${recommended ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}
+    >
       Choose {plan}
     </button>
   </div>
 );
 
-export default function LandingPage() {
+export default function LandingPage({ onGetStarted }) {
   return (
     <div className="w-full">
       {/* Navbar */}
@@ -51,7 +54,12 @@ export default function LandingPage() {
         <div className="hidden md:flex items-center space-x-8 text-gray-600 font-medium">
           <a href="#features" className="hover:text-indigo-600 transition">Features</a>
           <a href="#pricing" className="hover:text-indigo-600 transition">Pricing</a>
-          <button className="bg-indigo-600 text-white px-6 py-2 rounded-full hover:bg-indigo-700 transition">Get Started</button>
+          <button 
+            onClick={onGetStarted}
+            className="bg-indigo-600 text-white px-6 py-2 rounded-full hover:bg-indigo-700 transition"
+          >
+            Get Started
+          </button>
         </div>
       </nav>
 
@@ -64,7 +72,10 @@ export default function LandingPage() {
           Upload your lecture notes, slides, or textbooks. Get personalized study guides, practice quizzes, and schedules in seconds.
         </p>
         <div className="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-6">
-          <button className="w-full md:w-auto bg-indigo-600 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
+          <button 
+            onClick={onGetStarted}
+            className="w-full md:w-auto bg-indigo-600 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-200"
+          >
             Start Studying for Free
           </button>
           <button className="w-full md:w-auto bg-white text-gray-900 border border-gray-200 px-10 py-5 rounded-2xl font-bold text-lg hover:bg-gray-50 transition">
@@ -124,6 +135,7 @@ export default function LandingPage() {
               "10 practice quiz questions",
               "Community support"
             ]}
+            onSelect={onGetStarted}
           />
           <PricingCard 
             recommended
@@ -136,6 +148,7 @@ export default function LandingPage() {
               "Personalized study scheduling",
               "Priority AI processing"
             ]}
+            onSelect={onGetStarted}
           />
         </div>
       </section>
