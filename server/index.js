@@ -98,7 +98,7 @@ const processFile = async (filePath, fileType) => {
     const keyConcepts = sections.find(s => s.toLowerCase().includes('key concepts')) || 'Key concepts not found';
     const studyGuide = aiText; // Use full text as study guide for now
 
-    return { summary, keyConcepts, studyGuide, content: text };
+    return { summary, key_concepts: keyConcepts, study_guide: studyGuide, content: text };
 };
 
 app.get('/api/health', (req, res) => {
@@ -124,8 +124,8 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
                 status = 'completed', 
                 content = '${aiData.content.replace(/'/g, "''")}', 
                 summary = '${aiData.summary.replace(/'/g, "''")}', 
-                key_concepts = '${aiData.key_concepts?.replace(/'/g, "''") || aiData.keyConcepts.replace(/'/g, "''")}', 
-                study_guide = '${aiData.studyGuide.replace(/'/g, "''")}' 
+                key_concepts = '${aiData.key_concepts.replace(/'/g, "''")}', 
+                study_guide = '${aiData.study_guide.replace(/'/g, "''")}' 
                 WHERE filename = '${filename}'`;
             await runQuery(updateQuery);
         }).catch(async (error) => {

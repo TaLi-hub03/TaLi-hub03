@@ -13,7 +13,7 @@ const Dashboard = ({ onSelectMaterial }) => {
 
   const fetchMaterials = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/materials');
+      const response = await fetch('/api/materials');
       const data = await response.json();
       if (Array.isArray(data)) {
         setMaterials(data);
@@ -44,7 +44,7 @@ const Dashboard = ({ onSelectMaterial }) => {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:5000/api/upload', {
+      const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
